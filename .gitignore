@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.py[cod]
+gateway.log
+server.py.before-cors
+.env
+.env.*
+api-key
+auth.json
