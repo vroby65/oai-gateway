@@ -7,15 +7,18 @@ The offline test suite covers:
 - serialized OAuth token refresh and rotating refresh-token storage;
 - authenticated HTTP requests and input validation;
 - required streaming behavior through `response.completed`;
+- transparent Responses SSE and tool-call relay for Codex CLI;
 - interrupted and failed upstream streams;
 - exact-origin CORS and private-network preflight responses;
 - compact model-catalog responses;
-- loopback and RFC 1918 listener restrictions.
+- loopback and RFC 1918 listener restrictions;
+- launcher configuration without a gateway key in process arguments or agent
+  shell environments.
 
 Run it with:
 
 ```bash
-.venv/bin/python -m unittest -v test_regressions test_browser_access
+.venv/bin/python -m unittest -v test_regressions test_browser_access test_oai_code
 ```
 
 `test.py` performs the separate live verification after manual OAuth approval.

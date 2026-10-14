@@ -15,12 +15,13 @@ the official open-source OAuth flow, and exposes a deliberately small API.
 - `GET /health` for local status.
 - `GET /v1/models` for the signed-in account's compact model catalog.
 - `POST /v1/responses` for a synchronous `{model, output_text}` response.
+- `POST /codex/v1/responses` for transparent Responses SSE and tool calls.
 - A random local bearer key stored outside the repository with mode `0600`.
 - Exact-origin CORS for explicitly configured browser applications.
 
 This is not a drop-in OpenAI-compatible server. It intentionally implements
-only the endpoints above and converts the required upstream event stream into
-a compact JSON response.
+only the endpoints above. The regular endpoint converts the required upstream
+event stream into compact JSON; the Codex endpoint relays that stream unchanged.
 
 ## Requirements
 
@@ -129,7 +130,7 @@ Request bodies are limited to 512 KiB. The gateway forces `store: false` and
 The offline suite never contacts OpenAI and uses only fake credentials:
 
 ```bash
-.venv/bin/python -m unittest -v test_regressions test_browser_access
+.venv/bin/python -m unittest -v test_regressions test_browser_access test_oai_code
 ```
 
 After completing OAuth, a real end-to-end check can be run on the gateway host:
@@ -140,6 +141,41 @@ After completing OAuth, a real end-to-end check can be run on the gateway host:
 
 Pass a different base URL or model slug as positional arguments when needed.
 
+## Use Codex CLI through the gateway
+
+The included `oai-code` launcher gives Codex CLI the gateway's Responses
+endpoint while preserving its normal coding tools. It does not route Claude
+Code or emulate the Anthropic Messages API.
+
+Install the launcher somewhere on your `PATH`:
+
+```bash
+ln -s "$PWD/oai-code" ~/.local/bin/oai-code
+```
+
+Create `~/.config/oai-code/config` on the client machine:
+
+```ini
+gateway_url=http://192.168.1.50:18765
+model=gpt-6.1-sol
+```
+
+Then run it from a project directory:
+
+```bash
+oai-code
+```
+
+On first use, the launcher asks for the local gateway key and stores it in the
+desktop keyring through `secret-tool`. Alternatively, set
+`PI_AI_GATEWAY_KEY`, `OAI_GATEWAY_URL`, and `OAI_CODE_MODEL` in the environment.
+Environment values take precedence over the config file.
+
+The key is passed only to the Codex process as the custom provider credential.
+An explicit Codex environment filter prevents agent-run shell commands from
+receiving it. The launcher uses `--no-daemon` so its provider and credential do
+not leak into an already running Codex app-server session.
+
 ## Security model
 
 - Tokens and the local gateway key stay under `~/.config/pi-ai-gateway/`.
@@ -148,6 +184,8 @@ Pass a different base URL or model slug as positional arguments when needed.
 - Token refresh is serialized so rotating refresh tokens are not raced.
 - Browser origins are denied unless local or explicitly configured.
 - The listener refuses non-private addresses, including `0.0.0.0`.
+- Codex receives raw upstream events, while its child shell environment does
+  not receive the local gateway key.
 
 If OAuth credentials are exposed, disconnect the app in ChatGPT settings and
 remove the local credential file before signing in again.

@@ -239,6 +239,35 @@ class Handler(BaseHTTPRequestHandler):
         expected = 'Bearer ' + LOCAL_API_KEY
         return hmac.compare_digest(sent, expected)
 
+    def relay_codex_response(self, body):
+        with requests.post(RESOURCE + '/responses', json=body,
+                           headers={'Authorization': 'Bearer ' + token()},
+                           stream=True, timeout=(15, 240)) as upstream:
+            if upstream.status_code != 200:
+                content = upstream.content[:64 * 1024]
+                self.send_response(upstream.status_code)
+                self.send_header('Content-Type',
+                                 upstream.headers.get('Content-Type', 'application/json'))
+                self.send_header('Content-Length', str(len(content)))
+                self.send_header('Cache-Control', 'no-store')
+                self.end_headers()
+                self.wfile.write(content)
+                return
+            self.send_response(200)
+            self.send_header('Content-Type',
+                             upstream.headers.get('Content-Type', 'text/event-stream'))
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('Connection', 'close')
+            self.end_headers()
+            try:
+                for chunk in upstream.iter_content(chunk_size=8192):
+                    if chunk:
+                        self.wfile.write(chunk)
+                        self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError, requests.RequestException):
+                pass
+            self.close_connection = True
+
     def do_GET(self):
         if not self.authorized():
             self.respond(401, {'error': 'unauthorized'}); return
@@ -260,11 +289,12 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self.authorized():
             self.respond(401, {'error': 'unauthorized'}); return
-        if self.path != '/v1/responses':
+        if self.path not in ('/v1/responses', '/codex/v1/responses'):
             self.respond(404, {'error': 'not_found'}); return
         try:
             n = int(self.headers.get('Content-Length', '0'))
-            if n < 1 or n > 512 * 1024:
+            limit = 4 * 1024 * 1024 if self.path == '/codex/v1/responses' else 512 * 1024
+            if n < 1 or n > limit:
                 self.respond(413, {'error': 'bad_request_size'}); return
             body = json.loads(self.rfile.read(n))
             if not isinstance(body, dict) or not body.get('model') or 'input' not in body:
@@ -275,6 +305,9 @@ class Handler(BaseHTTPRequestHandler):
                 self.respond(400, {'error': 'input must be text or an array'}); return
             body['store'] = False
             body['stream'] = True
+            if self.path == '/codex/v1/responses':
+                self.relay_codex_response(body)
+                return
             with requests.post(RESOURCE + '/responses', json=body,
                                headers={'Authorization': 'Bearer ' + token()},
                                stream=True, timeout=(15, 240)) as r:

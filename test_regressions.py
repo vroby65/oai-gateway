@@ -147,6 +147,54 @@ class GatewayTests(unittest.TestCase):
                 http.server_close()
                 thread.join()
 
+    def test_codex_endpoint_relays_responses_stream_and_tools(self):
+        key = 'offline-test-key'
+        captured = []
+        sse = (b'event: response.completed\n'
+               b'data: {"type":"response.completed","response":{"status":"completed"}}\n\n')
+        upstream = Mock()
+        upstream.status_code = 200
+        upstream.headers = {'Content-Type': 'text/event-stream; charset=utf-8'}
+        upstream.__enter__ = Mock(return_value=upstream)
+        upstream.__exit__ = Mock(return_value=False)
+        upstream.iter_content.return_value = iter([sse])
+
+        def post(*args, **kwargs):
+            captured.append(kwargs['json'])
+            return upstream
+
+        with patch.object(server, 'LOCAL_API_KEY', key), \
+             patch.object(server, 'token', return_value='offline-access'), \
+             patch.object(server.requests, 'post', side_effect=post):
+            http = server.ThreadingHTTPServer(('127.0.0.1', 0), server.Handler)
+            thread = threading.Thread(target=http.serve_forever, daemon=True)
+            thread.start()
+            try:
+                body = json.dumps({
+                    'model': 'test-model',
+                    'input': [{'role': 'user', 'content': 'Use a tool'}],
+                    'tools': [{'type': 'function', 'name': 'shell'}],
+                }).encode()
+                request = urllib.request.Request(
+                    f'http://127.0.0.1:{http.server_port}/codex/v1/responses',
+                    data=body,
+                    headers={'Authorization': 'Bearer ' + key,
+                             'Content-Type': 'application/json'},
+                )
+                with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(
+                        request, timeout=5) as response:
+                    self.assertEqual(response.status, 200)
+                    self.assertEqual(response.headers.get_content_type(), 'text/event-stream')
+                    self.assertEqual(response.read(), sse)
+                self.assertEqual(captured[0]['tools'],
+                                 [{'type': 'function', 'name': 'shell'}])
+                self.assertIs(captured[0]['store'], False)
+                self.assertIs(captured[0]['stream'], True)
+            finally:
+                http.shutdown()
+                http.server_close()
+                thread.join()
+
 
 if __name__ == '__main__':
     unittest.main()
