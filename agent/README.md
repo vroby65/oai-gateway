@@ -3,8 +3,7 @@
 This is a small Python adapter for personal ChatGPT-plan requests. `server.py`
 handles OAuth and HTTP, `test.py` performs a real end-to-end check, and the
 unittest modules use simulations only. `start.sh` and `stop.sh` provide manual
-process control. `oai-code` launches Codex CLI against the streaming gateway
-endpoint without emulating Claude Code or the Anthropic protocol.
+process control.
 
 Preserve these constraints:
 
@@ -18,7 +17,6 @@ Preserve these constraints:
 - Keep browser origins local or explicitly configured through
   `PI_AI_GATEWAY_ORIGINS`.
 - Preserve raw SSE events and tool calls on `/codex/v1/responses`.
-- Keep `PI_AI_GATEWAY_KEY` excluded from agent-run shell environments.
 
 OAuth uses PKCE, state, nonce, signed ID-token validation, and the issued client
 ID. Credentials live in `~/.config/pi-ai-gateway/auth.json`. Writes are atomic;
@@ -29,7 +27,7 @@ event confirms inference success.
 Verify changes with:
 
 ```bash
-.venv/bin/python -m unittest -v test_regressions test_browser_access test_oai_code
+.venv/bin/python -m unittest -v test_regressions test_browser_access
 ```
 
 After manual authorization, the optional real check is

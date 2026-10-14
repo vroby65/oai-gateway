@@ -130,7 +130,7 @@ Request bodies are limited to 512 KiB. The gateway forces `store: false` and
 The offline suite never contacts OpenAI and uses only fake credentials:
 
 ```bash
-.venv/bin/python -m unittest -v test_regressions test_browser_access test_oai_code
+.venv/bin/python -m unittest -v test_regressions test_browser_access
 ```
 
 After completing OAuth, a real end-to-end check can be run on the gateway host:
@@ -141,40 +141,10 @@ After completing OAuth, a real end-to-end check can be run on the gateway host:
 
 Pass a different base URL or model slug as positional arguments when needed.
 
-## Use Codex CLI through the gateway
+## Codex clients
 
-The included `oai-code` launcher gives Codex CLI the gateway's Responses
-endpoint while preserving its normal coding tools. It does not route Claude
-Code or emulate the Anthropic Messages API.
-
-Install the launcher somewhere on your `PATH`:
-
-```bash
-ln -s "$PWD/oai-code" ~/.local/bin/oai-code
-```
-
-Create `~/.config/oai-code/config` on the client machine:
-
-```ini
-gateway_url=http://192.168.1.50:18765
-model=gpt-6.1-sol
-```
-
-Then run it from a project directory:
-
-```bash
-oai-code
-```
-
-On first use, the launcher asks for the local gateway key and stores it in the
-desktop keyring through `secret-tool`. Alternatively, set
-`PI_AI_GATEWAY_KEY`, `OAI_GATEWAY_URL`, and `OAI_CODE_MODEL` in the environment.
-Environment values take precedence over the config file.
-
-The key is passed only to the Codex process as the custom provider credential.
-An explicit Codex environment filter prevents agent-run shell commands from
-receiving it. The launcher uses `--no-daemon` so its provider and credential do
-not leak into an already running Codex app-server session.
+Codex CLI clients can use `/codex/v1` as a custom Responses provider. Client
+launchers are intentionally maintained outside this server project.
 
 ## Security model
 
@@ -184,8 +154,7 @@ not leak into an already running Codex app-server session.
 - Token refresh is serialized so rotating refresh tokens are not raced.
 - Browser origins are denied unless local or explicitly configured.
 - The listener refuses non-private addresses, including `0.0.0.0`.
-- Codex receives raw upstream events, while its child shell environment does
-  not receive the local gateway key.
+- Codex clients receive raw upstream events from `/codex/v1/responses`.
 
 If OAuth credentials are exposed, disconnect the app in ChatGPT settings and
 remove the local credential file before signing in again.

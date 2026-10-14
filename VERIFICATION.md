@@ -12,13 +12,11 @@ The offline test suite covers:
 - exact-origin CORS and private-network preflight responses;
 - compact model-catalog responses;
 - loopback and RFC 1918 listener restrictions;
-- launcher configuration without a gateway key in process arguments or agent
-  shell environments.
 
 Run it with:
 
 ```bash
-.venv/bin/python -m unittest -v test_regressions test_browser_access test_oai_code
+.venv/bin/python -m unittest -v test_regressions test_browser_access
 ```
 
 `test.py` performs the separate live verification after manual OAuth approval.
