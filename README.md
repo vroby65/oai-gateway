@@ -1,8 +1,9 @@
-# Pi AI Gateway
+# OAI Gateway
 
-A small, self-hosted HTTP gateway for using eligible ChatGPT plans from trusted
-LAN applications. It runs on a Raspberry Pi or another Linux host, completes
-the official open-source OAuth flow, and exposes a deliberately small API.
+An unofficial, self-hosted HTTP gateway for using eligible ChatGPT plans from
+trusted LAN applications. It runs on a Raspberry Pi or another Linux host,
+completes the official open-source OAuth flow, and exposes a deliberately small
+API.
 
 > [!WARNING]
 > This project is for personal use on a trusted private network. Do not expose
@@ -35,8 +36,8 @@ The original deployment was tested on Raspberry Pi OS 12, ARMv7, and Python
 ## Install
 
 ```bash
-git clone https://github.com/vroby65/raspberry-ai-gateway.git
-cd raspberry-ai-gateway
+git clone https://github.com/vroby65/oai-gateway.git
+cd oai-gateway
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
@@ -130,13 +131,13 @@ Request bodies are limited to 512 KiB. The gateway forces `store: false` and
 The offline suite never contacts OpenAI and uses only fake credentials:
 
 ```bash
-.venv/bin/python -m unittest -v test_regressions test_browser_access
+.venv/bin/python -m unittest discover -v -s tests
 ```
 
 After completing OAuth, a real end-to-end check can be run on the gateway host:
 
 ```bash
-.venv/bin/python test.py
+.venv/bin/python tests/live.py
 ```
 
 Pass a different base URL or model slug as positional arguments when needed.

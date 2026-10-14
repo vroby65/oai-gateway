@@ -1,9 +1,9 @@
-# Pi AI Gateway maintenance notes
+# OAI Gateway maintenance notes
 
 This is a small Python adapter for personal ChatGPT-plan requests. `server.py`
-handles OAuth and HTTP, `test.py` performs a real end-to-end check, and the
-unittest modules use simulations only. `start.sh` and `stop.sh` provide manual
-process control.
+handles OAuth and HTTP, `tests/live.py` performs a real end-to-end check, and
+the other modules in `tests/` use simulations only. `start.sh` and `stop.sh`
+provide manual process control.
 
 Preserve these constraints:
 
@@ -27,10 +27,10 @@ event confirms inference success.
 Verify changes with:
 
 ```bash
-.venv/bin/python -m unittest -v test_regressions test_browser_access
+.venv/bin/python -m unittest discover -v -s tests
 ```
 
 After manual authorization, the optional real check is
-`.venv/bin/python test.py`. Simulations do not prove account eligibility,
+`.venv/bin/python tests/live.py`. Simulations do not prove account eligibility,
 network access, or real refresh behavior. Update this file and `README.md` when
 commands, security boundaries, or credential handling change.

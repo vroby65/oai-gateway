@@ -16,10 +16,10 @@ The offline test suite covers:
 Run it with:
 
 ```bash
-.venv/bin/python -m unittest -v test_regressions test_browser_access
+.venv/bin/python -m unittest discover -v -s tests
 ```
 
-`test.py` performs the separate live verification after manual OAuth approval.
+`tests/live.py` performs the separate live verification after manual OAuth approval.
 It checks health, retrieves the account-specific model catalog, selects a model,
 and requires a non-empty completed response. Live verification consumes plan
 usage and cannot be replaced by the offline simulations.

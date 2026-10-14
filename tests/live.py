@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Usage: python3 test.py [http://LAN_IP:18765] [model_slug]"""
+"""Usage: python3 tests/live.py [http://LAN_IP:18765] [model_slug]"""
 import json, os, sys, urllib.request, urllib.error
 from pathlib import Path
 
