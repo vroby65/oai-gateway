@@ -22,6 +22,8 @@ AUTH = 'https://auth.openai.com'
 RESOURCE = 'https://api.openai.com/v1'
 TOKEN_URL = AUTH + '/api/accounts/oauth/token'
 LOCK = threading.RLock()
+REGULAR_REQUEST_LIMIT = 4 * 1024 * 1024
+CODEX_REQUEST_LIMIT = 4 * 1024 * 1024
 
 
 def load():
@@ -293,7 +295,7 @@ class Handler(BaseHTTPRequestHandler):
             self.respond(404, {'error': 'not_found'}); return
         try:
             n = int(self.headers.get('Content-Length', '0'))
-            limit = 4 * 1024 * 1024 if self.path == '/codex/v1/responses' else 512 * 1024
+            limit = CODEX_REQUEST_LIMIT if self.path == '/codex/v1/responses' else REGULAR_REQUEST_LIMIT
             if n < 1 or n > limit:
                 self.respond(413, {'error': 'bad_request_size'}); return
             body = json.loads(self.rfile.read(n))

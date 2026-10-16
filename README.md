@@ -123,8 +123,10 @@ curl --fail-with-body --silent --show-error \
   -d '{"model":"<MODEL_SLUG>","input":"Reply with exactly: gateway working"}'
 ```
 
-Request bodies are limited to 512 KiB. The gateway forces `store: false` and
-`stream: true` upstream and reports success only after `response.completed`.
+Request bodies are limited to 4 MiB, allowing compact Base64 image inputs from
+trusted browser clients. The gateway forwards Responses content items unchanged,
+forces `store: false` and `stream: true` upstream, and reports success only
+after `response.completed`.
 
 ## Test
 

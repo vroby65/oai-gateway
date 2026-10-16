@@ -17,6 +17,8 @@ Preserve these constraints:
 - Keep browser origins local or explicitly configured through
   `PI_AI_GATEWAY_ORIGINS`.
 - Preserve raw SSE events and tool calls on `/codex/v1/responses`.
+- Keep request bodies bounded to 4 MiB on both Responses routes. Regular Responses
+  may contain Base64 input-image content and must forward it without logging it.
 
 OAuth uses PKCE, state, nonce, signed ID-token validation, and the issued client
 ID. Credentials live in `~/.config/pi-ai-gateway/auth.json`. Writes are atomic;
