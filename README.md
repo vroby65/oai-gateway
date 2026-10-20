@@ -18,11 +18,14 @@ API.
 - `POST /v1/responses` for a synchronous `{model, output_text}` response.
 - `POST /codex/v1/responses` for transparent Responses SSE and tool calls.
 - A random local bearer key stored outside the repository with mode `0600`.
-- Exact-origin CORS for explicitly configured browser applications.
+- Exact-origin CORS for browser applications on `/health`, `/v1/models`, and
+  `/v1/responses`.
 
 This is not a drop-in OpenAI-compatible server. It intentionally implements
 only the endpoints above. The regular endpoint converts the required upstream
 event stream into compact JSON; the Codex endpoint relays that stream unchanged.
+All endpoints, including `/health`, require the local bearer key. The Codex
+endpoint is intended for native clients and does not support browser CORS.
 
 ## Requirements
 
@@ -101,7 +104,7 @@ or log them.
 
 On the first start, the gateway creates and displays its local bearer key once.
 It is stored at `~/.config/pi-ai-gateway/api-key`, outside the repository. To
-rotate and display it again:
+replace the key and display the new one, stop the server first and run:
 
 ```bash
 ./stop.sh
@@ -123,10 +126,12 @@ curl --fail-with-body --silent --show-error \
   -d '{"model":"<MODEL_SLUG>","input":"Reply with exactly: gateway working"}'
 ```
 
-Request bodies are limited to 4 MiB, allowing compact Base64 image inputs from
-trusted browser clients. The gateway forwards Responses content items unchanged,
-forces `store: false` and `stream: true` upstream, and reports success only
-after `response.completed`.
+The request body limit is 4 MiB on both Responses routes, allowing compact
+Base64 image inputs. The gateway forwards Responses input content items without
+logging them, forces `store: false` and `stream: true` upstream, and reports
+success on `/v1/responses` only after `response.completed`. The Codex route
+returns the upstream SSE stream and tool calls unchanged. Use the bearer key
+only with trusted clients on the local machine or private network.
 
 ## Test
 

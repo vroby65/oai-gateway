@@ -1,9 +1,22 @@
 #!/usr/bin/env python3
 """Small personal ChatGPT-plan Responses gateway. Python 3.9+; pip install requests PyJWT cryptography."""
-import argparse, base64, fcntl, hashlib, hmac, ipaddress, json, os, secrets, signal, sys, threading, time, uuid
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer, HTTPServer
+import argparse
+import base64
+import fcntl
+import hashlib
+import hmac
+import ipaddress
+import json
+import os
+import secrets
+import signal
+import sys
+import threading
+import time
+import uuid
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlencode, urlparse, parse_qs
+from urllib.parse import parse_qs, urlencode, urlparse
 import requests
 import jwt
 from jwt import PyJWKClient
@@ -113,13 +126,18 @@ def login():
         def do_GET(self):
             p = urlparse(self.path)
             if p.path != '/auth/callback':
-                self.send_error(404); return
+                self.send_error(404)
+                return
             q = parse_qs(p.query)
             if q.get('state', [''])[0] != state:
-                self.send_error(400, 'Invalid OAuth state'); return
+                self.send_error(400, 'Invalid OAuth state')
+                return
             captured.update({k: v[0] for k, v in q.items()})
-            self.send_response(200); self.send_header('Content-Type', 'text/plain; charset=utf-8')
-            self.end_headers(); self.wfile.write(b'Authorization received. You can close this tab.')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain; charset=utf-8')
+            self.end_headers()
+            self.wfile.write(b'Authorization received. You can close this tab.')
+
         def log_message(self, *args):
             pass  # Never log OAuth callback URL/code.
 
@@ -206,9 +224,11 @@ class Handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         origin = self.headers.get('Origin', '')
         if not browser_origin(origin):
-            self.respond(403, {'error': 'origin_not_allowed'}); return
+            self.respond(403, {'error': 'origin_not_allowed'})
+            return
         if self.path not in ('/health', '/v1/models', '/v1/responses'):
-            self.respond(404, {'error': 'not_found'}); return
+            self.respond(404, {'error': 'not_found'})
+            return
         self.send_response(204)
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type')
@@ -272,16 +292,33 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if not self.authorized():
-            self.respond(401, {'error': 'unauthorized'}); return
+            self.respond(401, {'error': 'unauthorized'})
+            return
         if self.path == '/health':
-            self.respond(200, {'ok': True, 'account_configured': bool(load().get('refresh_token'))}); return
+            self.respond(200, {
+                'ok': True,
+                'account_configured': bool(load().get('refresh_token')),
+            })
+            return
         if self.path == '/v1/models':
             try:
-                r = requests.get(RESOURCE + '/models', headers={'Authorization': 'Bearer ' + token()}, timeout=30)
+                r = requests.get(
+                    RESOURCE + '/models',
+                    headers={'Authorization': 'Bearer ' + token()},
+                    timeout=30,
+                )
                 data = r.json()
                 if r.status_code == 200:
-                    data = {'models': [{k: model[k] for k in ('slug', 'display_name', 'visibility') if k in model}
-                                       for model in data['models']]}
+                    data = {
+                        'models': [
+                            {
+                                k: model[k]
+                                for k in ('slug', 'display_name', 'visibility')
+                                if k in model
+                            }
+                            for model in data['models']
+                        ]
+                    }
                 self.respond(r.status_code, data)
             except Exception as e:
                 self.respond(502, {'error': str(e)})
@@ -290,31 +327,45 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         if not self.authorized():
-            self.respond(401, {'error': 'unauthorized'}); return
+            self.respond(401, {'error': 'unauthorized'})
+            return
         if self.path not in ('/v1/responses', '/codex/v1/responses'):
-            self.respond(404, {'error': 'not_found'}); return
+            self.respond(404, {'error': 'not_found'})
+            return
         try:
             n = int(self.headers.get('Content-Length', '0'))
-            limit = CODEX_REQUEST_LIMIT if self.path == '/codex/v1/responses' else REGULAR_REQUEST_LIMIT
+            limit = (
+                CODEX_REQUEST_LIMIT
+                if self.path == '/codex/v1/responses'
+                else REGULAR_REQUEST_LIMIT
+            )
             if n < 1 or n > limit:
-                self.respond(413, {'error': 'bad_request_size'}); return
+                self.respond(413, {'error': 'bad_request_size'})
+                return
             body = json.loads(self.rfile.read(n))
             if not isinstance(body, dict) or not body.get('model') or 'input' not in body:
-                self.respond(400, {'error': 'model and input required'}); return
+                self.respond(400, {'error': 'model and input required'})
+                return
             if isinstance(body['input'], str):
                 body['input'] = [{'role': 'user', 'content': body['input']}]
             if not isinstance(body['input'], list):
-                self.respond(400, {'error': 'input must be text or an array'}); return
+                self.respond(400, {'error': 'input must be text or an array'})
+                return
             body['store'] = False
             body['stream'] = True
             if self.path == '/codex/v1/responses':
                 self.relay_codex_response(body)
                 return
-            with requests.post(RESOURCE + '/responses', json=body,
-                               headers={'Authorization': 'Bearer ' + token()},
-                               stream=True, timeout=(15, 240)) as r:
+            with requests.post(
+                RESOURCE + '/responses',
+                json=body,
+                headers={'Authorization': 'Bearer ' + token()},
+                stream=True,
+                timeout=(15, 240),
+            ) as r:
                 if r.status_code != 200:
-                    self.respond(r.status_code, {'error': r.text[:3000]}); return
+                    self.respond(r.status_code, {'error': r.text[:3000]})
+                    return
                 # Convert mandatory upstream SSE into a compact synchronous JSON reply.
                 r.encoding = 'utf-8'
                 chunks, completed, failed = [], False, None
@@ -332,7 +383,11 @@ class Handler(BaseHTTPRequestHandler):
                     elif event.get('type') in ('response.failed', 'response.incomplete', 'error'):
                         failed = event
                 if not completed or failed is not None:
-                    self.respond(502, {'error': 'upstream_not_completed', 'details': failed}); return
+                    self.respond(502, {
+                        'error': 'upstream_not_completed',
+                        'details': failed,
+                    })
+                    return
                 self.respond(200, {'model': body['model'], 'output_text': ''.join(chunks)})
         except (ValueError, json.JSONDecodeError) as e:
             self.respond(400, {'error': str(e)})
